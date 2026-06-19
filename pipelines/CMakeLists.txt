@@ -15,7 +15,13 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../cpp/se3_lio/thirdparty/find_dependencies.
 # ROS 1 (catkin build or catkin_make)
 if (DEFINED CATKIN_DEVEL_PREFIX)
     message(STATUS "ROS1 build")
-    add_subdirectory(ros1)
+    # Select the ROS1 pipeline at build time, no source edits:
+    #   catkin build se3_lio --cmake-args -DROS1_PIPELINE=ros1
+    # ros1      : online streaming (live topics)
+    # ros1_base : offline file-based (cvgl pipeline)
+    set(ROS1_PIPELINE "ros1_base" CACHE STRING "ROS1 pipeline: ros1 | ros1_base")
+    message(STATUS "SE3-LIO ROS1 pipeline: ${ROS1_PIPELINE}")
+    add_subdirectory(${ROS1_PIPELINE})
 
 # ROS 2 (colcon build)
 elseif (DEFINED ENV{AMENT_PREFIX_PATH})
