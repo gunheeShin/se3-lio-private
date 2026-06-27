@@ -26,6 +26,9 @@ LioNode::LioNode(ros::NodeHandle &nh, ros::NodeHandle &nh_private) : nh_(nh), pn
                                  {5, 5, 5, 5, 5});
     pnh_.param<int>("/voxel_map/max_point_size", se3_lio_config_.voxel_map_max_point_size, 1000);
     pnh_.param<float>("/voxel_map/plane_threshold", se3_lio_config_.voxel_map_plane_thres, 0.01f);
+    pnh_.param<bool>("/voxel_map/map_sliding_en", se3_lio_config_.voxel_map_sliding_en, false);
+    pnh_.param<double>("/voxel_map/sliding_thresh", se3_lio_config_.voxel_map_sliding_thresh, 8.0);
+    pnh_.param<int>("/voxel_map/half_map_size", se3_lio_config_.voxel_map_half_size, 50);
 
     pnh_.param<bool>("/verbose", verbose_, true);
     pnh_.param<int>("/stop_from", stop_from_, 0);

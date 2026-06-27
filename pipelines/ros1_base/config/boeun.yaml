@@ -1,3 +1,9 @@
+# boeun/250428 — extrinsic 교정본
+# 원본 config: lio_ws/SE3-LIO/pipelines/ros1/config/hanwha.yaml (원래 사용하던 값)
+# 기존 params.yaml은 extrinsic이 틀렸었음 (z=0.044/yaw 존재). 여기서 z=0.39/단위회전으로 교정.
+imu_topic: "/imu/data"
+lidar_topic: "/ouster/points"
+
 sensors:
   imu:
     acc_cov: 0.1
@@ -8,15 +14,15 @@ sensors:
   lidar:
     min_range: 0.25
     max_range: 100000
-    ranging_covs: [0.02, 0.02]
-    angle_covs: [0.15, 0.15]
+    range_cov: 0.001    # 노드가 읽는 키 (hanwha의 ranging_covs[0.001] 의도 반영)
+    angle_cov: 0.01
 
   # [quat : w, x, y, z]
-  t_exts: [-0.011, -0.02329, 0.04412]
-  q_exts: [0.99995, 0.0, 0.0, -0.00999]
+  t_exts: [2.0e-08, 3.0e-07, 0.39]   # 교정: LiDAR가 body 위 0.39m
+  q_exts: [1.0, 0.0, 0.0, 0.0]       # 교정: 회전 단위행렬
 
 downsample:
-  resolution: 0.5
+  resolution: 1.0
 
 max_iter: 4
 
@@ -26,9 +32,6 @@ voxel_map:
   layer_size: [5, 5, 5, 5, 5]
   max_point_size: 1000
   plane_threshold: 0.1
-  map_sliding_en: false   # local-map sliding (voxel eviction) — set true to bound RAM
-  sliding_thresh: 8.0     # [m] re-slide after body moves this far
-  half_map_size: 50       # [voxels] keep +/- this box around body (resolution*half = local map radius)
 
 data:
   data_dir: "/ws/data/boeun/250428/fullloop/offline"
@@ -40,7 +43,3 @@ data_recorder:
   test_topic: "cvgl_data_test"
   param_set_name: "default"
   save_frame_mode: 2
-
-verbose: false
-stop_from: 1000000
-stop_per: 1
