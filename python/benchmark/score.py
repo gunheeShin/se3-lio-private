@@ -60,9 +60,9 @@ def score_topic(topic_dir, max_dt=0.02):
             # RAM/time sidecar written next to each TUM by run.py.
             sidecar = tum.with_suffix(".json")
             if sidecar.exists():
-                meta = json.loads(sidecar.read_text())
-                rams.append(meta.get("peak_ram_mb"))
-                times.append(meta.get("time_s"))
+                sidecar_meta = json.loads(sidecar.read_text())
+                rams.append(sidecar_meta.get("peak_ram_mb"))
+                times.append(sidecar_meta.get("time_s"))
         row["mean_rmse"] = sum(rmses) / len(rmses)  # any inf propagates -> combo ranks last
         # peak RAM = max across bags; time = total across bags.
         rams = [x for x in rams if x is not None]
