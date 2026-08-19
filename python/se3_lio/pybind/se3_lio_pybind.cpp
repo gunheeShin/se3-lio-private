@@ -2,6 +2,7 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <optional>
 
 #include <algorithm>
 #include <memory>
@@ -9,6 +10,18 @@
 #include "common/data_type.h"
 #include "common/utils.h"
 #include "pipeline/SE3_LIO.h"
+
+// Colouring is optional and only compiled when the C++ core was built with
+// OpenCV (se3_lio::visual). The released OpenCV-less wheel omits it entirely.
+#ifdef SE3_LIO_WITH_VISUAL
+#include <cstring>
+
+#include <opencv2/core.hpp>
+#include <sophus/se3.hpp>
+
+#include "visual/camera.h"
+#include "visual/colorizer.h"
+#endif
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -22,7 +35,7 @@ class SE3LIOWrapper {
 public:
     SE3LIOWrapper(const se3_lio::pipeline::SE3_LIO_Config &config,
                   const Eigen::Matrix4d &lidar_extrinsic)
-        : pipeline_(config), extrinsic_(lidar_extrinsic) {}
+        : pipeline_(config), extrinsic_(lidar_extrinsic), config_(config) {}
 
     // Returns (state, cloud): cloud is the deskewed scan in the body frame (the
     // undistorted points estimatePose produced), matching the C++ node's
@@ -31,7 +44,7 @@ public:
         const py::array_t<double, py::array::c_style | py::array::forcecast> &points,
         const py::array_t<double, py::array::c_style | py::array::forcecast> &point_times,
         const py::array_t<double, py::array::c_style | py::array::forcecast> &imu,
-        double frame_stamp) {
+        double frame_stamp, const py::object &image) {
         if (points.ndim() != 2 || points.shape(1) != 3)
             throw std::invalid_argument("points must have shape (N, 3)");
         if (point_times.ndim() != 1 || point_times.shape(0) != points.shape(0))
@@ -87,12 +100,81 @@ public:
             c(i, 1) = out_pts[i].y;
             c(i, 2) = out_pts[i].z;
         }
-        return py::make_tuple(pipeline_.getState(), cloud);
+
+        se3_lio::State state = pipeline_.getState();
+
+#ifdef SE3_LIO_WITH_VISUAL
+        if (!image.is_none()) {
+            if (!cam_)
+                throw std::runtime_error(
+                    "register_frame got an image but no camera is set; call set_camera() first");
+            auto img =
+                image.cast<py::array_t<uint8_t, py::array::c_style | py::array::forcecast>>();
+            if (img.ndim() != 3 || img.shape(2) != 3)
+                throw std::invalid_argument("image must have shape (H, W, 3) uint8");
+            cv::Mat color(static_cast<int>(img.shape(0)), static_cast<int>(img.shape(1)), CV_8UC3,
+                          const_cast<void *>(static_cast<const void *>(img.data())));
+            const cv::Mat undist = cam_->undistort(color);
+
+            const Eigen::Matrix3d R = state.rot();
+            const Eigen::Vector3d t = state.pos();
+            std::vector<Eigen::Vector3d> scan_world;
+            scan_world.reserve(out_pts.size());
+            for (const auto &p : out_pts)
+                scan_world.push_back(R * Eigen::Vector3d(p.x, p.y, p.z) + t);
+
+            const Sophus::SE3d T_w_i(Eigen::Quaterniond(R).normalized(), t);
+            const Sophus::SE3d T_c_w = T_c_i_ * T_w_i.inverse();
+            se3_lio::colorizePlanarLeaves(pipeline_.getMapManager()->voxel_map_, scan_world,
+                                          config_.voxel_map_resolution, *cam_, T_c_w, undist);
+        }
+#else
+        if (!image.is_none())
+            throw std::runtime_error(
+                "se3_lio was built without OpenCV; image colouring is unavailable in this build");
+#endif
+
+        return py::make_tuple(state, cloud);
     }
+
+#ifdef SE3_LIO_WITH_VISUAL
+    // Camera intrinsics + T_cam_imu (camera-from-IMU). Once set, register_frame
+    // paints each scan point's colour onto the voxel-map plane it lands in.
+    void SetCamera(int width, int height, double fx, double fy, double cx, double cy,
+                   const std::vector<double> &dist_coeffs, const Eigen::Matrix4d &T_cam_imu) {
+        cam_ = std::make_unique<se3_lio::PinholeCamera>(width, height, fx, fy, cx, cy, dist_coeffs);
+        T_c_i_ = Sophus::SE3d(
+            Eigen::Quaterniond(Eigen::Matrix3d(T_cam_imu.block<3, 3>(0, 0))).normalized(),
+            T_cam_imu.block<3, 1>(0, 3));
+    }
+
+    // Orthographic top-down colour map, north-up, centred on center_xy (or the
+    // current pose when absent — a past centre yields a fully observed patch).
+    // Returns a (side, side, 3) uint8 image, side = round(2*half_extent_m/res).
+    py::array_t<uint8_t> ExportBEV(double half_extent_m, double res,
+                                   std::optional<std::pair<double, double>> center_xy) {
+        const Eigen::Vector2d center =
+            center_xy ? Eigen::Vector2d(center_xy->first, center_xy->second)
+                      : Eigen::Vector2d(pipeline_.getState().pos().head<2>());
+        cv::Mat bev = se3_lio::exportBEV(pipeline_.getMapManager()->voxel_map_, center,
+                                         half_extent_m, res);
+        py::array_t<uint8_t> out({static_cast<py::ssize_t>(bev.rows),
+                                  static_cast<py::ssize_t>(bev.cols),
+                                  static_cast<py::ssize_t>(3)});
+        std::memcpy(out.mutable_data(), bev.data,
+                    static_cast<size_t>(bev.rows) * bev.cols * 3);
+        return out;
+    }
+#endif
 
 private:
     se3_lio::pipeline::SE3_LIO pipeline_;
     Eigen::Matrix4d extrinsic_;
+    se3_lio::pipeline::SE3_LIO_Config config_;
+#ifdef SE3_LIO_WITH_VISUAL
+    std::unique_ptr<se3_lio::PinholeCamera> cam_;
+    Sophus::SE3d T_c_i_;
+#endif
 };
 
 }  // namespace
@@ -137,5 +219,18 @@ PYBIND11_MODULE(se3_lio_pybind, m) {
         .def(py::init<const Config &, const Eigen::Matrix4d &>(), "config"_a,
              "lidar_extrinsic"_a)
         .def("_register_frame", &SE3LIOWrapper::RegisterFrame, "points"_a, "point_times"_a,
-             "imu"_a, "frame_stamp"_a);
+             "imu"_a, "frame_stamp"_a, "image"_a = py::none())
+#ifdef SE3_LIO_WITH_VISUAL
+        .def("_set_camera", &SE3LIOWrapper::SetCamera, "width"_a, "height"_a, "fx"_a, "fy"_a,
+             "cx"_a, "cy"_a, "dist_coeffs"_a, "T_cam_imu"_a)
+        .def("_export_bev", &SE3LIOWrapper::ExportBEV, "half_extent_m"_a, "res"_a,
+             "center_xy"_a = py::none())
+#endif
+        ;
+
+#ifdef SE3_LIO_WITH_VISUAL
+    m.attr("_HAS_VISUAL") = true;
+#else
+    m.attr("_HAS_VISUAL") = false;
+#endif
 }

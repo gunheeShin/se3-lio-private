@@ -23,6 +23,16 @@ add_subdirectory(synchronizer)
 add_subdirectory(pipeline)
 add_subdirectory(core)
 
+# Visual module (colorizer/camera for BEV). Optional so OpenCV-less builds
+# (e.g. the Python wheel) keep working unchanged.
+find_package(OpenCV QUIET COMPONENTS core imgproc calib3d)
+if(OpenCV_FOUND)
+    add_subdirectory(visual)
+    install(TARGETS visual DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/se3_lio)
+else()
+    message(STATUS "OpenCV not found - skipping se3_lio::visual")
+endif()
+
 install(TARGETS synchronizer DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/se3_lio)
 install(TARGETS pipeline DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/se3_lio)
 install(TARGETS core DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/se3_lio)

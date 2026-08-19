@@ -86,6 +86,12 @@ typedef struct Plane {
     // for debug by gunhee
     bool pass_nns = false;
 
+    // BEV colour accumulation (BGR). The colorizer averages observations while
+    // the plane still updates, then freezes once update_enable is false.
+    // color_n == 0 means uncoloured. Never read by odom.
+    Eigen::Vector3f color_sum{0.f, 0.f, 0.f};
+    int color_n = 0;
+
 } Plane;
 
 class VOXEL_LOC {
