@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Build the python-only image. The image pip-installs the released se3-lio, so it
-# needs no repo files at build time — context is this dir (not the repo root).
+# Build the python-only image. It source-builds se3_lio with OpenCV, so the context
+# is the MODULE ROOT (Dockerfile COPYs cpp/ + python/ + README.md).
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
-docker build -f "$HERE/Dockerfile" -t se3_lio:py "$HERE"
+ROOT="$(cd "$HERE/../.." && pwd)"
+docker build -f "$HERE/Dockerfile" -t se3_lio:py "$ROOT"
