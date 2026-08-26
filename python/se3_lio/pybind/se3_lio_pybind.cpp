@@ -137,6 +137,22 @@ public:
         return py::make_tuple(state, cloud);
     }
 
+    // All points of the local map, world frame, (N, 3).
+    py::array_t<double> ExportPointMap() {
+        const auto manager = pipeline_.getMapManager();
+        const std::vector<Eigen::Vector3d> pts =
+            manager ? manager->exportPointMap() : std::vector<Eigen::Vector3d>{};
+        const py::ssize_t n = static_cast<py::ssize_t>(pts.size());
+        py::array_t<double> out({n, static_cast<py::ssize_t>(3)});
+        auto o = out.mutable_unchecked<2>();
+        for (py::ssize_t i = 0; i < n; i++) {
+            for (int j = 0; j < 3; j++) {
+                o(i, j) = pts[static_cast<size_t>(i)][j];
+            }
+        }
+        return out;
+    }
+
 #ifdef SE3_LIO_WITH_VISUAL
     // Camera intrinsics + T_cam_imu (camera-from-IMU). Once set, register_frame
     // paints each scan point's colour onto the voxel-map plane it lands in.
@@ -220,6 +236,7 @@ PYBIND11_MODULE(se3_lio_pybind, m) {
              "lidar_extrinsic"_a)
         .def("_register_frame", &SE3LIOWrapper::RegisterFrame, "points"_a, "point_times"_a,
              "imu"_a, "frame_stamp"_a, "image"_a = py::none())
+        .def("_export_point_map", &SE3LIOWrapper::ExportPointMap)
 #ifdef SE3_LIO_WITH_VISUAL
         .def("_set_camera", &SE3LIOWrapper::SetCamera, "width"_a, "height"_a, "fx"_a, "fy"_a,
              "cx"_a, "cy"_a, "dist_coeffs"_a, "T_cam_imu"_a)

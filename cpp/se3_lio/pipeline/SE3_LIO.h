@@ -54,8 +54,8 @@ public:
 
     size_t getMapSize() const { return map_manager_ ? map_manager_->mapSize() : 0; }
 
-    // Exposed so an OpenCV-enabled caller (the pybind colorizer) can reach the
-    // voxel map to paint planar leaves and export a BEV. Odom never uses this.
+    // Exposed so a caller (the pybind layer) can reach the voxel map: export its
+    // points, or paint planar leaves for a BEV. Odom never uses this.
     std::shared_ptr<se3_lio::ManageMap> getMapManager() const { return map_manager_; }
 
 private:

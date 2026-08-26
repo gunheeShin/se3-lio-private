@@ -79,6 +79,35 @@ std::vector<Plane> ManageMap::getPlanes() {
     return planes;
 }
 
+namespace {
+
+// Visit every leaf under node (leaves only -- a split node keeps a copy of its points).
+template <typename Fn>
+void forEachLeaf(const OctoTree *node, Fn &&fn) {
+    if (node == nullptr) return;
+    if (node->octo_state_ == 1) {
+        for (int i = 0; i < 8; i++) {
+            forEachLeaf(node->leaves_[i], fn);
+        }
+        return;
+    }
+    fn(*node);
+}
+
+}  // namespace
+
+std::vector<Eigen::Vector3d> ManageMap::exportPointMap() const {
+    std::vector<Eigen::Vector3d> points;
+    for (const auto &voxel : voxel_map_) {
+        forEachLeaf(voxel.second, [&points](const OctoTree &leaf) {
+            for (const auto &pv : leaf.temp_points_) {
+                points.push_back(pv.point);
+            }
+        });
+    }
+    return points;
+}
+
 void ManageMap::updateMap() {
     curr_pose_ = curr_state_.pose;
     curr_pose_cov_ = curr_state_.pose_cov();

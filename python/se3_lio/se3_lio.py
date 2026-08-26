@@ -60,6 +60,10 @@ class SE3LIO:
             np.ascontiguousarray(T_cam_imu, dtype=float),
         )
 
+    def export_map(self):
+        """All points of the local map, world frame, (N, 3). Crop consumer-side."""
+        return self._odom._export_point_map()
+
     def export_bev(self, half_extent_m, res, center_xy=None):
         """Render the coloured map as a top-down BEV centred on ``center_xy``
         (world (x, y); defaults to the current pose — a past centre yields a

@@ -85,6 +85,11 @@ public:
     std::vector<Plane> getPlanes();
 
     /**
+     * @brief All points of the local map, world frame. Crop consumer-side.
+     */
+    std::vector<Eigen::Vector3d> exportPointMap() const;
+
+    /**
      * @brief Number of root voxels currently held by the map.
      */
     size_t mapSize() const { return voxel_map_.size(); }
