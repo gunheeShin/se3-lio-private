@@ -185,6 +185,7 @@ The same parameter groups apply to both ROS1 and ROS2 (in their respective
 | topics | `imu_topic`, `lidar_topic` | input topic names |
 | `sensors/imu` | `acc_cov`, `gyr_cov`, `b_acc_cov`, `b_gyr_cov` | IMU noise / bias covariances |
 | `sensors/lidar` | `min_range`, `range_cov`, `angle_cov` | LiDAR range gate and measurement noise |
+| `sensors/lidar` | `point_filter_num` | keep every Nth raw point (1 = keep all) |
 | `sensors` | `t_exts`, `q_exts` | LiDAR→IMU extrinsic (translation, quaternion `w,x,y,z`) |
 | `downsample` | `resolution` | input downsample voxel size (m) |
 | | `max_iter` | max iterations per update |

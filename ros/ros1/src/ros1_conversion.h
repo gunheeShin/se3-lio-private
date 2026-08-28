@@ -74,7 +74,7 @@ inline IMU convertIMUMessage(sensor_msgs::Imu::ConstPtr _imu_msg) {
 };
 
 inline LiDAR convertOusterMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_msg,
-                                  double _min_range) {
+                                  double _min_range, int _point_filter_num = 1) {
     LiDAR lidar;
     lidar.header.seq = _lidar_msg->header.seq;
     lidar.header.timestamp = _lidar_msg->header.stamp.toSec();
@@ -84,7 +84,7 @@ inline LiDAR convertOusterMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_msg,
 
     pcl::fromROSMsg(*_lidar_msg, *points_ouster);
 
-    for (int i = 0; i < points_ouster->size(); i++) {
+    for (int i = 0; i < points_ouster->size(); i += _point_filter_num) {
         // url::PointType point;
         CustomPointType point;
         point.x = points_ouster->points[i].x;
@@ -102,7 +102,8 @@ inline LiDAR convertOusterMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_msg,
     return lidar;
 };
 
-inline LiDAR convertHesaiMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_msg, double _min_range) {
+inline LiDAR convertHesaiMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_msg, double _min_range,
+                                 int _point_filter_num = 1) {
     LiDAR lidar;
     lidar.header.seq = _lidar_msg->header.seq;
     lidar.header.timestamp = _lidar_msg->header.stamp.toSec();
@@ -112,7 +113,7 @@ inline LiDAR convertHesaiMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_msg, 
 
     pcl::fromROSMsg(*_lidar_msg, *points_hesai);
 
-    for (int i = 0; i < points_hesai->size(); i++) {
+    for (int i = 0; i < points_hesai->size(); i += _point_filter_num) {
         // url::PointType point;
         CustomPointType point;
         point.x = points_hesai->points[i].x;
@@ -131,7 +132,7 @@ inline LiDAR convertHesaiMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_msg, 
 };
 
 inline LiDAR convertVelodyneMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_msg,
-                                    double _min_range) {
+                                    double _min_range, int _point_filter_num = 1) {
     LiDAR lidar;
     lidar.header.seq = _lidar_msg->header.seq;
     lidar.header.frame_id = _lidar_msg->header.frame_id;
@@ -148,7 +149,7 @@ inline LiDAR convertVelodyneMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_ms
         if (static_cast<double>(p.time) < t0) t0 = static_cast<double>(p.time);
     lidar.header.timestamp = _lidar_msg->header.stamp.toSec() + t0;
 
-    for (size_t i = 0; i < points_velo->size(); i++) {
+    for (size_t i = 0; i < points_velo->size(); i += _point_filter_num) {
         CustomPointType point;
         point.x = points_velo->points[i].x;
         point.y = points_velo->points[i].y;
@@ -166,7 +167,7 @@ inline LiDAR convertVelodyneMessage(sensor_msgs::PointCloud2::ConstPtr _lidar_ms
 };
 
 inline LiDAR convertLivoxMessage(livox_ros_driver2::CustomMsg::ConstPtr _lidar_msg,
-                                 double _min_range) {
+                                 double _min_range, int _point_filter_num = 1) {
     LiDAR lidar;
     lidar.header.seq = _lidar_msg->header.seq;
     lidar.header.timestamp = _lidar_msg->header.stamp.toSec();
@@ -177,7 +178,7 @@ inline LiDAR convertLivoxMessage(livox_ros_driver2::CustomMsg::ConstPtr _lidar_m
 
     CustomPointType last_point;
 
-    for (int i = 1; i < num_points; i++) {
+    for (int i = 1; i < num_points; i += _point_filter_num) {
         if ((_lidar_msg->points[i].tag & 0x30) == 0x10 ||
             (_lidar_msg->points[i].tag & 0x30) == 0x00) {
             CustomPointType point;

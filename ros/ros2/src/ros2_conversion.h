@@ -49,7 +49,7 @@ inline IMU convertIMUMessage(const sensor_msgs::msg::Imu::SharedPtr &_imu_msg) {
 };
 
 inline LiDAR convertLivoxMessage(livox_ros_driver2::msg::CustomMsg::SharedPtr _lidar_msg,
-                                 double _min_range) {
+                                 double _min_range, int _point_filter_num = 1) {
     LiDAR lidar;
     rclcpp::Time stamp(_lidar_msg->header.stamp);
     lidar.header.timestamp = stamp.seconds();
@@ -61,7 +61,7 @@ inline LiDAR convertLivoxMessage(livox_ros_driver2::msg::CustomMsg::SharedPtr _l
     CustomPointType last_point;
     last_point.x = last_point.y = last_point.z = 0.0;  // origin: range filter drops it anyway
 
-    for (int i = 0; i < num_points; i++) {
+    for (int i = 0; i < num_points; i += _point_filter_num) {
         if ((_lidar_msg->points[i].tag & 0x30) == 0x10 ||
             (_lidar_msg->points[i].tag & 0x30) == 0x00) {
             // url::PointType point;
@@ -88,7 +88,7 @@ inline LiDAR convertLivoxMessage(livox_ros_driver2::msg::CustomMsg::SharedPtr _l
 };
 
 inline LiDAR convertOusterMessage(const sensor_msgs::msg::PointCloud2::SharedPtr &_lidar_msg,
-                                  double _min_range) {
+                                  double _min_range, int _point_filter_num = 1) {
     LiDAR lidar;
     rclcpp::Time stamp(_lidar_msg->header.stamp);
     lidar.header.timestamp = stamp.seconds();
@@ -98,7 +98,7 @@ inline LiDAR convertOusterMessage(const sensor_msgs::msg::PointCloud2::SharedPtr
     pcl::fromROSMsg(*_lidar_msg, *points_ouster);
 
     lidar.points.reserve(points_ouster->size());
-    for (size_t i = 0; i < points_ouster->size(); i++) {
+    for (size_t i = 0; i < points_ouster->size(); i += _point_filter_num) {
         CustomPointType point;
         point.x = points_ouster->points[i].x;
         point.y = points_ouster->points[i].y;
