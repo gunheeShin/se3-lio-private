@@ -70,6 +70,7 @@ private:
     nav_msgs::Path path_;
 
     double lidar_min_range_ = 0.1;
+    int lidar_point_filter_num_ = 1;
 
     void imuCallback(const IMU_MSG_TYPE &_msg);
     void lidarCallback(const LIDAR_MSG_TYPE &_msg);

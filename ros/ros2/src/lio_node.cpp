@@ -37,10 +37,13 @@ LioNode::LioNode() : Node("se3_lio_node") {
     this->declare_parameter<double>("sensors.lidar.min_range", 0.1);
     this->declare_parameter<double>("sensors.lidar.range_cov", 0.001);
     this->declare_parameter<double>("sensors.lidar.angle_cov", 0.01);
+    this->declare_parameter<int>("sensors.lidar.point_filter_num", 1);
 
     this->get_parameter("sensors.lidar.min_range", lidar_min_range_);
     this->get_parameter("sensors.lidar.range_cov", se3_lio_config_.lidar_range_noise);
     this->get_parameter("sensors.lidar.angle_cov", se3_lio_config_.lidar_angle_noise);
+    this->get_parameter("sensors.lidar.point_filter_num", lidar_point_filter_num_);
+    if (lidar_point_filter_num_ < 1) lidar_point_filter_num_ = 1;
 
     std::vector<double> lidar_extrinsic_t, lidar_extrinsic_q;
     this->declare_parameter<std::vector<double>>("sensors.t_exts", {0.0, 0.0, 0.0});
@@ -193,9 +196,9 @@ void LioNode::pushAllROSMessages() {
 
     while (!lidar_queue_.empty()) {
 #if defined(LIDAR_LIVOX)
-        LiDAR lidar = convertLivoxMessage(lidar_queue_.front(), lidar_min_range_);
+        LiDAR lidar = convertLivoxMessage(lidar_queue_.front(), lidar_min_range_, lidar_point_filter_num_);
 #else  // LIDAR_OUSTER
-        LiDAR lidar = convertOusterMessage(lidar_queue_.front(), lidar_min_range_);
+        LiDAR lidar = convertOusterMessage(lidar_queue_.front(), lidar_min_range_, lidar_point_filter_num_);
 #endif
         synchronizer_.addLiDAR(lidar);
         lidar_queue_.pop();
