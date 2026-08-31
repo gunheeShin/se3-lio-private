@@ -137,6 +137,8 @@ public:
         return py::make_tuple(state, cloud);
     }
 
+    bool IsInitialized() const { return pipeline_.isInitialized(); }
+
     // All points of the local map, world frame, (N, 3).
     py::array_t<double> ExportPointMap() {
         const auto manager = pipeline_.getMapManager();
@@ -236,6 +238,7 @@ PYBIND11_MODULE(se3_lio_pybind, m) {
              "lidar_extrinsic"_a)
         .def("_register_frame", &SE3LIOWrapper::RegisterFrame, "points"_a, "point_times"_a,
              "imu"_a, "frame_stamp"_a, "image"_a = py::none())
+        .def_property_readonly("is_initialized", &SE3LIOWrapper::IsInitialized)
         .def("_export_point_map", &SE3LIOWrapper::ExportPointMap)
 #ifdef SE3_LIO_WITH_VISUAL
         .def("_set_camera", &SE3LIOWrapper::SetCamera, "width"_a, "height"_a, "fx"_a, "fy"_a,

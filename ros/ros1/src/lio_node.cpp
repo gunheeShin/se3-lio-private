@@ -15,6 +15,8 @@ LioNode::LioNode(ros::NodeHandle &nh, ros::NodeHandle &nh_private) : nh_(nh), pn
     pnh_.param<double>("/sensors/imu/b_gyr_cov", se3_lio_config_.ba_noise, 0.0001);
 
     pnh_.param<double>("/sensors/lidar/min_range", lidar_min_range_, 0.1);
+    pnh_.param<int>("/sensors/lidar/point_filter_num", lidar_point_filter_num_, 1);
+    if (lidar_point_filter_num_ < 1) lidar_point_filter_num_ = 1;
     pnh_.param<double>("/sensors/lidar/range_cov", se3_lio_config_.lidar_range_noise,
                        0.001);  // 벡터로 수정해야함
     pnh_.param<double>("/sensors/lidar/angle_cov", se3_lio_config_.lidar_angle_noise, 0.01);
@@ -141,13 +143,13 @@ void LioNode::pushAllROSMessages() {
 
     while (!lidar_queue_.empty()) {
 #if defined(LIDAR_LIVOX)
-        LiDAR lidar = convertLivoxMessage(lidar_queue_.front(), lidar_min_range_);
+        LiDAR lidar = convertLivoxMessage(lidar_queue_.front(), lidar_min_range_, lidar_point_filter_num_);
 #elif defined(LIDAR_HESAI)
-        LiDAR lidar = convertHesaiMessage(lidar_queue_.front(), lidar_min_range_);
+        LiDAR lidar = convertHesaiMessage(lidar_queue_.front(), lidar_min_range_, lidar_point_filter_num_);
 #elif defined(LIDAR_VELODYNE)
-        LiDAR lidar = convertVelodyneMessage(lidar_queue_.front(), lidar_min_range_);
+        LiDAR lidar = convertVelodyneMessage(lidar_queue_.front(), lidar_min_range_, lidar_point_filter_num_);
 #else  // LIDAR_OUSTER
-        LiDAR lidar = convertOusterMessage(lidar_queue_.front(), lidar_min_range_);
+        LiDAR lidar = convertOusterMessage(lidar_queue_.front(), lidar_min_range_, lidar_point_filter_num_);
 #endif
         synchronizer_.addLiDAR(lidar);
         lidar_queue_.pop();

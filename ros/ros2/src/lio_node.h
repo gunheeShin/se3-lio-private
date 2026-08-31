@@ -69,6 +69,7 @@ private:
     nav_msgs::msg::Path path_;
 
     double lidar_min_range_ = 0.1;
+    int lidar_point_filter_num_ = 1;
 
     bool keep_process_ = false;
 

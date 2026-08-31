@@ -47,6 +47,11 @@ class SE3LIO:
             None if image is None else np.ascontiguousarray(image, dtype=np.uint8),
         )
 
+    @property
+    def is_initialized(self) -> bool:
+        """IMU/gravity init done (20+ samples); before that register_frame returns the identity state."""
+        return self._odom.is_initialized
+
     def set_camera(self, width, height, fx, fy, cx, cy, dist_coeffs, T_cam_imu):
         """Register the colour camera used by ``register_frame(image=...)``.
 

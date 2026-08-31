@@ -9,10 +9,15 @@
     <a href="https://pypi.org/project/se3-lio/"><img src="https://img.shields.io/pypi/v/se3-lio?logo=pypi&logoColor=white&label=PyPI" /></a>
     <br />
     <a href="https://arxiv.org/abs/2603.16118"><img src="https://img.shields.io/badge/arXiv-b33737?logo=arXiv" /></a>
-    <a href="https://youtu.be/xu2S5Q_2fpc"><img src="https://img.shields.io/badge/YouTube-FF0000?logo=youtube&logoColor=white" /></a>
+    <a href="https://youtu.be/PSinH_y6MH4"><img src="https://img.shields.io/badge/YouTube-FF0000?logo=youtube&logoColor=white" /></a>
     <a href="https://se3-lio.github.io/"><img src="https://img.shields.io/badge/Project_Page-2ea44f" /></a>
     <br />
     <br />
+    <p align="center">
+        <a href="https://youtu.be/PSinH_y6MH4"><img src="pictures/se3-lio-demo.gif" alt="SE(3)-LIO demo (click for full video)" width="640" /></a>
+        <br />
+        <sub><a href="https://youtu.be/PSinH_y6MH4">▶ Click the demo for the full video</a></sub>
+    </p>
     <p><strong><em>Smooth IMU propagation with jointly distributed poses on the SE(3) manifold for accurate and robust LiDAR-Inertial Odometry.</em></strong></p>
 </div>
 
@@ -180,6 +185,7 @@ The same parameter groups apply to both ROS1 and ROS2 (in their respective
 | topics | `imu_topic`, `lidar_topic` | input topic names |
 | `sensors/imu` | `acc_cov`, `gyr_cov`, `b_acc_cov`, `b_gyr_cov` | IMU noise / bias covariances |
 | `sensors/lidar` | `min_range`, `range_cov`, `angle_cov` | LiDAR range gate and measurement noise |
+| `sensors/lidar` | `point_filter_num` | keep every Nth raw point (1 = keep all) |
 | `sensors` | `t_exts`, `q_exts` | LiDAR→IMU extrinsic (translation, quaternion `w,x,y,z`) |
 | `downsample` | `resolution` | input downsample voxel size (m) |
 | | `max_iter` | max iterations per update |

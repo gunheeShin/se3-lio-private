@@ -52,6 +52,9 @@ public:
 
     State getState() const { return state_; }
 
+    // IMU/gravity initialisation done: poses are estimated, not the identity init state.
+    bool isInitialized() const { return state_predictor_.isInitialized(); }
+
     size_t getMapSize() const { return map_manager_ ? map_manager_->mapSize() : 0; }
 
     // Exposed so a caller (the pybind layer) can reach the voxel map: export its
