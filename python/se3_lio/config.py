@@ -109,6 +109,7 @@ def load_node_params(params_path):
         "config": config,
         "extrinsic": extrinsic,
         "min_range": _get(params, "sensors.lidar.min_range", 0.1),
+        "point_filter_num": int(_get(params, "sensors.lidar.point_filter_num", 1)),
         "imu_topic": _get(params, "imu_topic", "/imu/data"),
         "lidar_topic": _get(params, "lidar_topic", "/lidar/points"),
     }

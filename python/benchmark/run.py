@@ -37,7 +37,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 # --- dataset registry (key -> bag/base_params/GT/topics) ------------------
 _OVERRIDE_KEYS = (
-    "imu_topic", "lidar_topic", "min_range", "max_frames",
+    "imu_topic", "lidar_topic", "min_range", "point_filter_num", "max_frames",
     "input_type", "bag", "gt_tum",
 )
 
@@ -73,6 +73,7 @@ def resolve_entry(entry):
         "imu_topic": p["imu_topic"],
         "lidar_topic": p["lidar_topic"],
         "min_range": p["min_range"],
+        "point_filter_num": p["point_filter_num"],
         "base_params": entry["base_params"],
         "input_type": "ros1-ouster",
         "max_frames": None,
@@ -146,7 +147,7 @@ def _load_frames(entry, stream=False):
     params = resolve_entry(entry)
     ds_cls = Ros1BagDataset if params["input_type"] == "ros1-ouster" else RosbagDataset
     ds = ds_cls(params["bag"], params["imu_topic"], params["lidar_topic"],
-                params["min_range"], params["max_frames"])
+                params["min_range"], params["max_frames"], params["point_filter_num"])
 
     # A streaming dataset re-reads the bag on each __iter__, so passing the object
     # itself lets every combo iterate it without holding all frames in memory.

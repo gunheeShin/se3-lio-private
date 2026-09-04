@@ -34,14 +34,14 @@ def _open_reader(bag_path):
     return reader
 
 
-def _convert_livox(msg, min_range):
+def _convert_livox(msg, min_range, point_filter_num=1):
     """Port of convertLivoxMessage: returns (pts Nx3 float64, offsets N float64)."""
     pts = msg.points
     n = len(pts)
     min_r2 = min_range * min_range
     last_x = last_y = last_z = 0.0
     xs, ys, zs, offs = [], [], [], []
-    for i in range(n):  # keep the first point too (mirrors the node's i=0 fix)
+    for i in range(0, n, point_filter_num):  # keep the first point too (mirrors the node's i=0 fix)
         pt = pts[i]
         tag = pt.tag & 0x30
         if tag != 0x10 and tag != 0x00:
@@ -87,7 +87,7 @@ def synchronize(imus, scans, max_frames=None):
     return frames
 
 
-def stream_frames(bag_path, imu_topic, lidar_topic, min_range, max_frames=None):
+def stream_frames(bag_path, imu_topic, lidar_topic, min_range, max_frames=None, point_filter_num=1):
     """Yield synced `Frame`s one at a time in bounded memory: the bag is read one
     message at a time (never buffered whole), and the online synchronizer drains
     each scan as soon as it is IMU-covered -- so processed scans are dropped
@@ -110,7 +110,7 @@ def stream_frames(bag_path, imu_topic, lidar_topic, min_range, max_frames=None):
             sync.add_imu([_stamp(m.header), a.x, a.y, a.z, w.x, w.y, w.z])
         elif topic == lidar_topic:
             m = deserialize_message(data, CustomMsg)
-            pts, offs = _convert_livox(m, min_range)
+            pts, offs = _convert_livox(m, min_range, point_filter_num)
             sync.add_scan(_stamp(m.header), pts, offs)
         else:
             continue
@@ -129,8 +129,8 @@ class RosbagDataset:
     is read once per iteration, one frame at a time -- no full-bag materialization,
     so RAM stays bounded regardless of bag size."""
 
-    def __init__(self, bag_path, imu_topic, lidar_topic, min_range, max_frames=None):
-        self._args = (bag_path, imu_topic, lidar_topic, min_range, max_frames)
+    def __init__(self, bag_path, imu_topic, lidar_topic, min_range, max_frames=None, point_filter_num=1):
+        self._args = (bag_path, imu_topic, lidar_topic, min_range, max_frames, point_filter_num)
 
     def __iter__(self):
         return stream_frames(*self._args)

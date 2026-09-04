@@ -43,7 +43,7 @@ def _pc2_arrays(msg, needed):
     return np.frombuffer(bytes(msg.data), dtype=dt)
 
 
-def _xyz_keep(arr, min_range):
+def _xyz_keep(arr, min_range, point_filter_num=1):
     xyz = np.stack(
         [arr["x"].astype(np.float64), arr["y"].astype(np.float64), arr["z"].astype(np.float64)],
         axis=1,
@@ -56,53 +56,55 @@ def _xyz_keep(arr, min_range):
     xf, yf, zf = arr["x"], arr["y"], arr["z"]
     d2 = (xf * xf + yf * yf + zf * zf).astype(np.float64)
     keep = d2 > (min_range * min_range)
+    if point_filter_num > 1:  # keep every Nth raw point (i += N in the ROS node)
+        keep &= (np.arange(len(keep)) % point_filter_num) == 0
     return xyz, keep
 
 
-def _convert_ouster(msg, min_range):
+def _convert_ouster(msg, min_range, point_filter_num=1):
     """Port of convertOusterMessage: per-point time is the `t` field (ns offset
     from scan start). Original order preserved (so the last kept point matches
     C++ `points.back()` used by the synchronizer)."""
     arr = _pc2_arrays(msg, ("x", "y", "z", "intensity", "t"))
-    xyz, keep = _xyz_keep(arr, min_range)
+    xyz, keep = _xyz_keep(arr, min_range, point_filter_num)
     offs = arr["t"].astype(np.float64) * 1e-9
     return xyz[keep], offs[keep], 0.0
 
 
-def _convert_hesai(msg, min_range):
+def _convert_hesai(msg, min_range, point_filter_num=1):
     """Port of convertHesaiMessage: per-point `timestamp` is absolute seconds,
     so the offset from scan start is timestamp - header stamp (GrandTour Hesai)."""
     arr = _pc2_arrays(msg, ("x", "y", "z", "intensity", "timestamp"))
-    xyz, keep = _xyz_keep(arr, min_range)
+    xyz, keep = _xyz_keep(arr, min_range, point_filter_num)
     offs = arr["timestamp"].astype(np.float64) - _stamp(msg.header)
     return xyz[keep], offs[keep], 0.0
 
 
-def _convert_velodyne(msg, min_range):
+def _convert_velodyne(msg, min_range, point_filter_num=1):
     """Port of convertVelodyneMessage: per-point `time` (float32 seconds) is
     relative to the header stamp (scan end), in [-period, 0]. Shift by the
     minimum time so offsets are ascending and >= 0 and the header marks the scan
     start; t0 is taken over all points (before filtering) for binding parity."""
     arr = _pc2_arrays(msg, ("x", "y", "z", "intensity", "time"))
-    xyz, keep = _xyz_keep(arr, min_range)
+    xyz, keep = _xyz_keep(arr, min_range, point_filter_num)
     t = arr["time"].astype(np.float64)
     header_shift = float(t.min()) if t.size else 0.0
     offs = t - header_shift
     return xyz[keep], offs[keep], header_shift
 
 
-def _convert_lidar(msg, min_range):
+def _convert_lidar(msg, min_range, point_filter_num=1):
     """Dispatch by per-point time field, returning (xyz, offsets, header_shift):
     Ouster has `t` (uint32 ns), Hesai/GrandTour has `timestamp` (float64 absolute
     seconds), Velodyne has `time` (float32 seconds relative to scan end). The
     header shift is added to the scan stamp so it marks the scan start."""
     names = {f.name for f in msg.fields}
     if "t" in names:
-        return _convert_ouster(msg, min_range)
+        return _convert_ouster(msg, min_range, point_filter_num)
     if "timestamp" in names:
-        return _convert_hesai(msg, min_range)
+        return _convert_hesai(msg, min_range, point_filter_num)
     if "time" in names:
-        return _convert_velodyne(msg, min_range)
+        return _convert_velodyne(msg, min_range, point_filter_num)
     raise RuntimeError(f"no per-point time field (t/timestamp/time) in cloud: {sorted(names)}")
 
 
@@ -123,7 +125,7 @@ def _as_bag_list(bag):
     return [Path(s)]
 
 
-def stream_frames(bag_path, imu_topic, lidar_topic, min_range, max_frames=None):
+def stream_frames(bag_path, imu_topic, lidar_topic, min_range, max_frames=None, point_filter_num=1):
     """Yield synced `Frame`s one at a time in bounded memory: the bag is read one
     message at a time (never buffered whole), and the online synchronizer drains
     each scan as soon as it is IMU-covered -- so processed scans are dropped
@@ -144,7 +146,7 @@ def stream_frames(bag_path, imu_topic, lidar_topic, min_range, max_frames=None):
                 a, w = m.linear_acceleration, m.angular_velocity
                 sync.add_imu([_stamp(m.header), a.x, a.y, a.z, w.x, w.y, w.z])
             else:
-                pts, offs, shift = _convert_lidar(m, min_range)
+                pts, offs, shift = _convert_lidar(m, min_range, point_filter_num)
                 sync.add_scan(_stamp(m.header) + shift, pts, offs)
             # Drain after every message: a buffered scan is emitted as soon as an
             # IMU covers its end (so tail scans need no separate final flush).
@@ -161,8 +163,8 @@ class Ros1BagDataset:
     The bag is read once per iteration, one frame at a time -- no full-bag
     materialization, so RAM stays bounded regardless of bag size."""
 
-    def __init__(self, bag_path, imu_topic, lidar_topic, min_range, max_frames=None):
-        self._args = (bag_path, imu_topic, lidar_topic, min_range, max_frames)
+    def __init__(self, bag_path, imu_topic, lidar_topic, min_range, max_frames=None, point_filter_num=1):
+        self._args = (bag_path, imu_topic, lidar_topic, min_range, max_frames, point_filter_num)
 
     def __iter__(self):
         return stream_frames(*self._args)
